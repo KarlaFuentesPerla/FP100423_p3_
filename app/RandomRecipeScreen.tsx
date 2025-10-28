@@ -153,6 +153,7 @@ export default function RandomRecipeScreen({ navigation }: any) {
   );
 
   const renderMatchingRecipes = () => {
+    console.log('renderMatchingRecipes - userIngredients:', userIngredients.length, 'matchingRecipes:', matchingRecipes.length);
     if (userIngredients.length === 0) return null;
     
     return (
@@ -167,7 +168,7 @@ export default function RandomRecipeScreen({ navigation }: any) {
             No se encontraron recetas con los ingredientes seleccionados
           </Text>
         ) : (
-          <View style={styles.recipesContainer}>
+          <View>
             {matchingRecipes.map((item) => (
               <TouchableOpacity
                 key={item.id}
@@ -367,9 +368,9 @@ export default function RandomRecipeScreen({ navigation }: any) {
       {renderHeader()}
       {renderIngredientsSection()}
       {renderMatchingRecipes()}
-      {renderGenerateButton()}
       {renderError()}
       {renderRandomRecipe()}
+      {renderGenerateButton()}
       {renderModal()}
     </ScrollView>
   );
@@ -467,6 +468,7 @@ const styles = StyleSheet.create({
   generateButton: {
     backgroundColor: '#e48fb4',
     margin: 16,
+    marginBottom: 40,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -600,9 +602,6 @@ const styles = StyleSheet.create({
   closeButtonText: {
     fontSize: 20,
     color: '#666',
-  },
-  recipesContainer: {
-    maxHeight: 400,
   },
   recipeCard: {
     backgroundColor: '#f8f9fa',

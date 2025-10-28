@@ -191,16 +191,20 @@ export const useRandomRecipe = () => {
   };
 
   const searchRecipesByIngredients = async () => {
+    console.log('searchRecipesByIngredients ejecutándose');
     if (userIngredients.length === 0) {
+      console.log('No hay ingredientes del usuario, limpiando recetas');
       setMatchingRecipes([]);
       return;
     }
 
     try {
+      console.log('Iniciando búsqueda de recetas...');
       setSearchLoading(true);
       setError(null);
 
       const ingredientIds = userIngredients.map(ing => ing.id);
+      console.log('IDs de ingredientes a buscar:', ingredientIds);
 
       // Buscar recetas que contengan al menos uno de los ingredientes seleccionados
       const { data: recipeIds, error: recipeIdsError } = await supabase
@@ -216,11 +220,13 @@ export const useRandomRecipe = () => {
       }
 
       if (!recipeIds || recipeIds.length === 0) {
+        console.log('No se encontraron recetas con esos ingredientes');
         setMatchingRecipes([]);
         return;
       }
 
       const uniqueRecipeIds = [...new Set(recipeIds.map(ri => ri.recipe_id))];
+      console.log('IDs únicos de recetas encontradas:', uniqueRecipeIds);
 
       // Obtener las recetas
       const { data: recipes, error: recipesError } = await supabase
@@ -247,8 +253,10 @@ export const useRandomRecipe = () => {
       }
 
       // Transformar las recetas y obtener ingredientes por separado
+      console.log('Transformando', recipes.length, 'recetas...');
       const transformedRecipes = await Promise.all(
         recipes.map(async (recipe) => {
+          console.log('Procesando receta:', recipe.id, recipe.title);
           // Obtener ingredientes de la receta
           const { data: recipeIngredients, error: ingredientsError } = await supabase
             .from('recipe_ingredients')
@@ -265,6 +273,8 @@ export const useRandomRecipe = () => {
           const ingredients = recipeIngredients ? recipeIngredients.map(ri => 
             `${ri.quantity || ''} ${ri.ingredients?.name || ''}`.trim()
           ) : [];
+
+          console.log('Receta', recipe.id, 'tiene', ingredients.length, 'ingredientes:', ingredients);
 
           return {
             id: recipe.id.toString(),
@@ -283,21 +293,25 @@ export const useRandomRecipe = () => {
         })
       );
 
-      // Filtrar por número máximo de ingredientes y ordenar por coincidencias
-      const maxIngredients = isPremium() ? 10 : 3;
+      // Filtrar y ordenar por coincidencias (más flexible)
+      console.log('Filtrando recetas por coincidencias...');
+      console.log('Recetas antes del filtro:', transformedRecipes.length);
+      
       const filteredRecipes = transformedRecipes
-        .filter(recipe => recipe.ingredients.length <= maxIngredients)
-        .sort((a, b) => {
-          // Ordenar por número de ingredientes coincidentes (mayor a menor)
-          const aMatches = a.ingredients.filter(ing => 
+        .map(recipe => {
+          // Calcular coincidencias para cada receta
+          const matches = recipe.ingredients.filter(ing => 
             userIngredients.some(ui => ing.toLowerCase().includes(ui.name.toLowerCase()))
           ).length;
-          const bMatches = b.ingredients.filter(ing => 
-            userIngredients.some(ui => ing.toLowerCase().includes(ui.name.toLowerCase()))
-          ).length;
-          return bMatches - aMatches;
-        });
+          
+          console.log(`Receta ${recipe.id} (${recipe.title}): ${recipe.ingredients.length} ingredientes total, ${matches} coincidencias`);
+          
+          return { ...recipe, matches };
+        })
+        .filter(recipe => recipe.matches > 0) // Solo recetas con al menos 1 coincidencia
+        .sort((a, b) => b.matches - a.matches); // Ordenar por coincidencias (mayor a menor)
 
+      console.log('Recetas finales encontradas:', filteredRecipes.length);
       setMatchingRecipes(filteredRecipes);
     } catch (err: any) {
       console.error('Error inesperado buscando recetas:', err);
@@ -310,9 +324,12 @@ export const useRandomRecipe = () => {
 
   // Buscar recetas automáticamente cuando cambien los ingredientes del usuario
   useEffect(() => {
+    console.log('useEffect userIngredients ejecutándose, ingredientes:', userIngredients.length);
     if (userIngredients.length > 0) {
+      console.log('Buscando recetas para ingredientes:', userIngredients.map(ing => ing.name));
       searchRecipesByIngredients();
     } else {
+      console.log('No hay ingredientes, limpiando recetas');
       setMatchingRecipes([]);
     }
   }, [userIngredients]);
