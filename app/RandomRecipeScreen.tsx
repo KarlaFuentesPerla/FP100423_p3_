@@ -152,6 +152,21 @@ export default function RandomRecipeScreen({ navigation }: any) {
     </View>
   );
 
+  const renderPremiumMessage = () => (
+    <TouchableOpacity style={styles.premiumCard}>
+      <View style={styles.premiumCardContent}>
+        <Text style={styles.premiumIcon}>👑</Text>
+        <Text style={styles.premiumTitle}>¡Desbloquea Premium!</Text>
+        <Text style={styles.premiumDescription}>
+          Ve más recetas y accede a contenido exclusivo
+        </Text>
+        <Text style={styles.premiumSubtext}>
+          +10 ingredientes • Recetas ilimitadas • Sin anuncios
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
   const renderMatchingRecipes = () => {
     console.log('renderMatchingRecipes - userIngredients:', userIngredients.length, 'matchingRecipes:', matchingRecipes.length);
     if (userIngredients.length === 0) return null;
@@ -216,6 +231,11 @@ export default function RandomRecipeScreen({ navigation }: any) {
                 </View>
               </TouchableOpacity>
             ))}
+            
+            {/* Mostrar mensaje de Premium si es usuario Free y hay más de 3 recetas */}
+            {isFree() && matchingRecipes.length === 3 && (
+              renderPremiumMessage()
+            )}
           </View>
         )}
       </View>
@@ -709,5 +729,49 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#4CAF50',
     fontWeight: 'bold',
+  },
+  premiumCard: {
+    backgroundColor: '#fff',
+    margin: 16,
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    shadowColor: '#FFD700',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  premiumCardContent: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  premiumIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  premiumTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  premiumDescription: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  premiumSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

@@ -311,8 +311,13 @@ export const useRandomRecipe = () => {
         .filter(recipe => recipe.matches > 0) // Solo recetas con al menos 1 coincidencia
         .sort((a, b) => b.matches - a.matches); // Ordenar por coincidencias (mayor a menor)
 
+      // Limitar recetas para usuarios Free (máximo 3)
+      const maxRecipesToShow = isPremium() ? filteredRecipes.length : 3;
+      const limitedRecipes = filteredRecipes.slice(0, maxRecipesToShow);
+      
       console.log('Recetas finales encontradas:', filteredRecipes.length);
-      setMatchingRecipes(filteredRecipes);
+      console.log('Recetas a mostrar (Free limit):', limitedRecipes.length);
+      setMatchingRecipes(limitedRecipes);
     } catch (err: any) {
       console.error('Error inesperado buscando recetas:', err);
       setError(err.message);
