@@ -28,15 +28,19 @@ export const useRandomRecipe = () => {
   const [randomRecipe, setRandomRecipe] = useState<Recipe | null>(null);
   const [userIngredients, setUserIngredients] = useState<UserIngredient[]>([]);
   const [availableIngredients, setAvailableIngredients] = useState<UserIngredient[]>([]);
+  const [ingredientsLoaded, setIngredientsLoaded] = useState(false);
   const [matchingRecipes, setMatchingRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { profile, isPremium, isFree } = useProfile();
 
   useEffect(() => {
-    loadUserIngredients();
     loadAvailableIngredients();
+  }, []);
+
+  useEffect(() => {
+    loadUserIngredients();
   }, [profile]);
 
   const loadUserIngredients = async () => {
@@ -58,7 +62,6 @@ export const useRandomRecipe = () => {
         .order('name');
 
       if (error) {
-        console.error('Error cargando ingredientes:', error);
         setError(error.message);
         setAvailableIngredients([]);
         return;
@@ -67,12 +70,12 @@ export const useRandomRecipe = () => {
       const ingredients = data?.map(item => ({
         id: parseInt(item.id),
         name: item.name,
-        category: 'general' // Categoría por defecto
+        category: 'general'
       })) || [];
 
       setAvailableIngredients(ingredients);
+      setIngredientsLoaded(true);
     } catch (err: any) {
-      console.error('Error inesperado cargando ingredientes:', err);
       setError(err.message);
       setAvailableIngredients([]);
     }
@@ -200,21 +203,36 @@ export const useRandomRecipe = () => {
       const ingredientIds = userIngredients.map(ing => ing.id);
 
       // Buscar recetas que contengan al menos uno de los ingredientes seleccionados
+      const { data: recipeIds, error: recipeIdsError } = await supabase
+        .from('recipe_ingredients')
+        .select('recipe_id')
+        .in('ingredient_id', ingredientIds);
+
+      if (recipeIdsError) {
+        console.error('Error buscando IDs de recetas:', recipeIdsError);
+        setError(recipeIdsError.message);
+        setMatchingRecipes([]);
+        return;
+      }
+
+      if (!recipeIds || recipeIds.length === 0) {
+        setMatchingRecipes([]);
+        return;
+      }
+
+      const uniqueRecipeIds = [...new Set(recipeIds.map(ri => ri.recipe_id))];
+
+      // Obtener las recetas
       const { data: recipes, error: recipesError } = await supabase
         .from('recipes')
         .select(`
           id,
           title,
           description,
-          steps,
-          recipe_ingredients(
-            ingredient_id,
-            quantity,
-            ingredients(name)
-          )
+          steps
         `)
         .eq('is_public', true)
-        .in('recipe_ingredients.ingredient_id', ingredientIds);
+        .in('id', uniqueRecipeIds);
 
       if (recipesError) {
         console.error('Error buscando recetas:', recipesError);
@@ -228,29 +246,47 @@ export const useRandomRecipe = () => {
         return;
       }
 
-      // Filtrar y transformar las recetas
-      const maxIngredients = isPremium() ? 10 : 3;
-      const transformedRecipes = recipes
-        .filter(recipe => 
-          recipe.recipe_ingredients && 
-          recipe.recipe_ingredients.length <= maxIngredients
-        )
-        .map(recipe => ({
-          id: recipe.id,
-          title: recipe.title,
-          description: recipe.description,
-          ingredients: recipe.recipe_ingredients ? recipe.recipe_ingredients.map(ri => 
+      // Transformar las recetas y obtener ingredientes por separado
+      const transformedRecipes = await Promise.all(
+        recipes.map(async (recipe) => {
+          // Obtener ingredientes de la receta
+          const { data: recipeIngredients, error: ingredientsError } = await supabase
+            .from('recipe_ingredients')
+            .select(`
+              quantity,
+              ingredients(name)
+            `)
+            .eq('recipe_id', recipe.id);
+
+          if (ingredientsError) {
+            console.error('Error cargando ingredientes para receta:', recipe.id, ingredientsError);
+          }
+
+          const ingredients = recipeIngredients ? recipeIngredients.map(ri => 
             `${ri.quantity || ''} ${ri.ingredients?.name || ''}`.trim()
-          ) : [],
-          instructions: recipe.steps ? recipe.steps.split('\n').filter(step => step.trim()) : [],
-          prep_time: 15,
-          cook_time: 30,
-          servings: 4,
-          difficulty: 'easy' as const,
-          is_public: true,
-          user_id: recipe.user_id || '',
-          created_at: new Date().toISOString()
-        }))
+          ) : [];
+
+          return {
+            id: recipe.id.toString(),
+            title: recipe.title,
+            description: recipe.description,
+            ingredients,
+            instructions: recipe.steps ? recipe.steps.split('\n').filter(step => step.trim()) : [],
+            prep_time: 15,
+            cook_time: 30,
+            servings: 4,
+            difficulty: 'easy' as const,
+            is_public: true,
+            user_id: recipe.user_id?.toString() || '',
+            created_at: new Date().toISOString()
+          };
+        })
+      );
+
+      // Filtrar por número máximo de ingredientes y ordenar por coincidencias
+      const maxIngredients = isPremium() ? 10 : 3;
+      const filteredRecipes = transformedRecipes
+        .filter(recipe => recipe.ingredients.length <= maxIngredients)
         .sort((a, b) => {
           // Ordenar por número de ingredientes coincidentes (mayor a menor)
           const aMatches = a.ingredients.filter(ing => 
@@ -262,7 +298,7 @@ export const useRandomRecipe = () => {
           return bMatches - aMatches;
         });
 
-      setMatchingRecipes(transformedRecipes);
+      setMatchingRecipes(filteredRecipes);
     } catch (err: any) {
       console.error('Error inesperado buscando recetas:', err);
       setError(err.message);
@@ -289,6 +325,7 @@ export const useRandomRecipe = () => {
     loading,
     searchLoading,
     error,
+    ingredientsLoaded,
     generateRandomRecipe,
     addIngredient,
     removeIngredient,

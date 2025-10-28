@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
     Modal,
     ScrollView,
     StyleSheet,
@@ -23,6 +22,7 @@ export default function RandomRecipeScreen({ navigation }: any) {
     loading,
     searchLoading,
     error,
+    ingredientsLoaded,
     generateRandomRecipe,
     addIngredient,
     removeIngredient,
@@ -32,6 +32,7 @@ export default function RandomRecipeScreen({ navigation }: any) {
     isPremium,
     isFree
   } = useRandomRecipe();
+
 
   const { isFavorite, toggleFavorite } = useFavorites();
   const { profile } = useProfile();
@@ -323,36 +324,40 @@ export default function RandomRecipeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        <FlatList
-          data={availableIngredients}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => {
-            const isSelected = userIngredients.some(ui => ui.id === item.id);
-            const canSelect = !isSelected && canAddMoreIngredients();
+        <View style={styles.ingredientsContainer}>
+          <Text style={styles.ingredientsCount}>
+            {availableIngredients.length} ingredientes disponibles
+          </Text>
+          
+          <ScrollView style={styles.ingredientsScrollView}>
+            {availableIngredients.map((ingredient, index) => {
+              const isSelected = userIngredients.some(ui => ui.id === ingredient.id);
+              const canSelect = !isSelected && canAddMoreIngredients();
 
-            return (
-              <TouchableOpacity
-                style={[
-                  styles.ingredientOption,
-                  isSelected && styles.ingredientOptionSelected,
-                  !canSelect && styles.ingredientOptionDisabled
-                ]}
-                onPress={() => canSelect && handleAddIngredient(item.id)}
-                disabled={!canSelect}
-              >
-                <Text style={[
-                  styles.ingredientOptionText,
-                  isSelected && styles.ingredientOptionTextSelected,
-                  !canSelect && styles.ingredientOptionTextDisabled
-                ]}>
-                  {item.name}
-                </Text>
-                {isSelected && <Text style={styles.checkmark}>✓</Text>}
-              </TouchableOpacity>
-            );
-          }}
-          style={styles.ingredientsList}
-        />
+              return (
+                <TouchableOpacity
+                  key={ingredient.id}
+                  style={[
+                    styles.ingredientItem,
+                    isSelected && styles.ingredientItemSelected,
+                    !canSelect && styles.ingredientItemDisabled
+                  ]}
+                  onPress={() => canSelect && handleAddIngredient(ingredient.id)}
+                  disabled={!canSelect}
+                >
+                  <Text style={[
+                    styles.ingredientItemText,
+                    isSelected && styles.ingredientItemTextSelected,
+                    !canSelect && styles.ingredientItemTextDisabled
+                  ]}>
+                    {ingredient.name}
+                  </Text>
+                  {isSelected && <Text style={styles.ingredientCheckmark}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
       </View>
     </Modal>
   );
@@ -427,12 +432,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     padding: 20,
-  },
-  ingredientsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-    maxHeight: 120,
   },
   ingredientChip: {
     backgroundColor: '#e48fb4',
@@ -602,36 +601,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#666',
   },
-  ingredientOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  ingredientOptionSelected: {
-    backgroundColor: '#e8f5e8',
-  },
-  ingredientOptionDisabled: {
-    backgroundColor: '#f5f5f5',
-  },
-  ingredientOptionText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  ingredientOptionTextSelected: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  ingredientOptionTextDisabled: {
-    color: '#ccc',
-  },
-  checkmark: {
-    fontSize: 16,
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
   recipesContainer: {
     maxHeight: 400,
   },
@@ -695,5 +664,51 @@ const styles = StyleSheet.create({
     color: '#e48fb4',
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  ingredientsContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  ingredientsCount: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontWeight: '600',
+  },
+  ingredientsScrollView: {
+    flex: 1,
+  },
+  ingredientItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
+  },
+  ingredientItemSelected: {
+    backgroundColor: '#e8f5e8',
+  },
+  ingredientItemDisabled: {
+    backgroundColor: '#f5f5f5',
+  },
+  ingredientItemText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+  },
+  ingredientItemTextSelected: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+  },
+  ingredientItemTextDisabled: {
+    color: '#ccc',
+  },
+  ingredientCheckmark: {
+    fontSize: 18,
+    color: '#4CAF50',
+    fontWeight: 'bold',
   },
 });
