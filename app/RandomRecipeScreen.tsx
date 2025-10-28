@@ -30,7 +30,8 @@ export default function RandomRecipeScreen({ navigation }: any) {
     getMaxIngredients,
     canAddMoreIngredients,
     isPremium,
-    isFree
+    isFree,
+    setRandomRecipe
   } = useRandomRecipe();
 
 
@@ -39,7 +40,41 @@ export default function RandomRecipeScreen({ navigation }: any) {
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
 
   const handleGenerateRecipe = async () => {
-    await generateRandomRecipe();
+    // Si hay ingredientes seleccionados, generar receta aleatoria de las coincidencias
+    if (userIngredients.length > 0 && matchingRecipes.length > 0) {
+      // Seleccionar una receta aleatoria de las que coinciden con los ingredientes
+      const randomIndex = Math.floor(Math.random() * matchingRecipes.length);
+      const selectedRecipe = matchingRecipes[randomIndex];
+      
+      // Transformar la receta al formato esperado por randomRecipe
+      const transformedRecipe = {
+        id: selectedRecipe.id,
+        title: selectedRecipe.title,
+        description: selectedRecipe.description,
+        ingredients: selectedRecipe.ingredients,
+        instructions: selectedRecipe.instructions,
+        prep_time: selectedRecipe.prep_time,
+        cook_time: selectedRecipe.cook_time,
+        servings: selectedRecipe.servings,
+        difficulty: selectedRecipe.difficulty,
+        is_public: selectedRecipe.is_public,
+        user_id: selectedRecipe.user_id,
+        created_at: selectedRecipe.created_at
+      };
+      
+      // Establecer la receta aleatoria
+      setRandomRecipe(transformedRecipe);
+    } else if (userIngredients.length === 0) {
+      Alert.alert(
+        'Selecciona ingredientes primero',
+        'Para generar una receta aleatoria, primero selecciona algunos ingredientes.'
+      );
+    } else {
+      Alert.alert(
+        'No hay recetas disponibles',
+        'No se encontraron recetas con los ingredientes seleccionados.'
+      );
+    }
   };
 
   const handleToggleFavorite = async () => {
@@ -251,7 +286,9 @@ export default function RandomRecipeScreen({ navigation }: any) {
       {loading ? (
         <ActivityIndicator color="white" />
       ) : (
-        <Text style={styles.generateButtonText}>🎲 Generar Receta Aleatoria</Text>
+        <Text style={styles.generateButtonText}>
+          🎲 {userIngredients.length > 0 ? 'Receta Aleatoria de Mis Ingredientes' : 'Generar Receta Aleatoria'}
+        </Text>
       )}
     </TouchableOpacity>
   );

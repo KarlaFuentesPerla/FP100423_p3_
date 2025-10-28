@@ -356,5 +356,6 @@ export const useRandomRecipe = () => {
     canAddMoreIngredients,
     isPremium,
     isFree,
+    setRandomRecipe,
   };
 };
