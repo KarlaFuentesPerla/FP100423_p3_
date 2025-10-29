@@ -4,7 +4,7 @@ Una aplicación móvil desarrollada con React Native y Expo para descubrir, crea
 
 ## ✨ Características
 
-- **🔐 Autenticación OTP** por email con Supabase
+- **🔐 Autenticación OTP** 
 - **📱 Interfaz moderna** con diseño atractivo y paleta de colores suave
 - **🍽️ Recetas del día** con ingredientes seleccionables
 - **❤️ Sistema de favoritos** para guardar recetas
@@ -59,10 +59,6 @@ Una aplicación móvil desarrollada con React Native y Expo para descubrir, crea
 ## 📱 Funcionalidades Principales
 
 ### 🔐 Autenticación Segura
-- **Registro e inicio de sesión** con OTP por email
-- **Verificación automática** de correo electrónico
-- **Deep links** para verificación automática
-- **Manejo de sesiones** persistente y seguro
 
 ### 🍽️ Recetas del Día
 - **Selección de ingredientes** de una amplia base de datos
@@ -86,7 +82,6 @@ Una aplicación móvil desarrollada con React Native y Expo para descubrir, crea
 
 ### 🎲 Generador Inteligente
 - **Genera recetas aleatorias** de ingredientes seleccionados
-- **Fallback inteligente** a recetas generales
 - **Interfaz intuitiva** y responsiva
 - **Filtrado automático** por disponibilidad de ingredientes
 
@@ -174,14 +169,6 @@ npx expo build:android
 # iOS
 npx expo build:ios
 ```
-
-## 🔒 Seguridad
-
-- **Autenticación robusta** con Supabase Auth
-- **Row Level Security** para protección de datos
-- **Validación de entrada** en todos los formularios
-- **Manejo seguro** de tokens y sesiones
-- **Políticas granulares** de acceso a datos
 
 ## 🤝 Contribución
 
