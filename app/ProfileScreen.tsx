@@ -9,6 +9,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useFavorites } from '../hooks/useFavorites';
 import { supabase } from '../lib/supabase';
 
 interface Profile {
@@ -26,20 +27,18 @@ interface Recipe {
   created_at: string;
 }
 
-interface Favorite {
-  recipe_id: string;
-  recipes: Recipe;
-}
-
 export default function Profile({ navigation }: any) {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [userRecipes, setUserRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Usar el hook de favoritos
+  const { favorites, loadFavorites, removeFromFavorites } = useFavorites();
 
   useEffect(() => {
     loadProfileData();
+    loadFavorites(); // Cargar favoritos usando el hook
   }, []);
 
   const loadProfileData = async () => {
@@ -57,54 +56,18 @@ export default function Profile({ navigation }: any) {
       if (profileData) {
         setProfile(profileData);
 
-        // Cargar favoritos (solo si la tabla existe)
-        let favoritesData = [];
-        try {
-          const { data, error: favoritesError } = await supabase
-            .from('favorites')
-            .select(`
-              recipe_id,
-              recipes (
-                id,
-                title,
-                description,
-                created_at
-              )
-            `)
-            .eq('user_id', user.id);
-          
-          if (favoritesError) {
-            console.log('Favorites not available:', favoritesError);
-            favoritesData = [];
-          } else {
-            favoritesData = data || [];
-          }
-        } catch (err) {
-          console.log('Favorites table not accessible:', err);
-          favoritesData = [];
-        }
+        // Cargar recetas del usuario (todos los usuarios)
+        const { data: recipesData, error: recipesError } = await supabase
+          .from('recipes')
+          .select('id, title, description, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
 
-        setFavorites(
-          (favoritesData as any[]).map(fav => ({
-            recipe_id: fav.recipe_id,
-            recipes: fav.recipes
-          })) || []
-        );
-
-        // Cargar recetas del usuario (solo si es premium)
-        if (profileData.plan === 'premium') {
-          const { data: recipesData, error: recipesError } = await supabase
-            .from('recipes')
-            .select('id, title, description, created_at')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-
-          if (recipesError) {
-            console.error('Error cargando recetas del usuario:', recipesError);
-            setUserRecipes([]);
-          } else {
-            setUserRecipes(recipesData || []);
-          }
+        if (recipesError) {
+          console.error('Error cargando recetas del usuario:', recipesError);
+          setUserRecipes([]);
+        } else {
+          setUserRecipes(recipesData || []);
         }
       }
     } catch (error) {
@@ -118,6 +81,7 @@ export default function Profile({ navigation }: any) {
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadProfileData();
+    await loadFavorites(); // Recargar favoritos también
     setRefreshing(false);
   };
 
@@ -151,6 +115,82 @@ export default function Profile({ navigation }: any) {
     } catch (error) {
       Alert.alert('Error', 'No se pudo actualizar el plan');
     }
+  };
+
+  const handleRemoveFavorite = async (recipeId: string, recipeTitle: string) => {
+    Alert.alert(
+      'Eliminar de favoritos',
+      `¿Estás seguro de que quieres eliminar "${recipeTitle}" de tus favoritos?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            const success = await removeFromFavorites(recipeId);
+            if (success) {
+              Alert.alert('Éxito', 'La receta se eliminó de tus favoritos');
+            } else {
+              Alert.alert('Error', 'No se pudo eliminar la receta de favoritos');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteRecipe = async (recipeId: string, recipeTitle: string) => {
+    Alert.alert(
+      'Eliminar receta',
+      `¿Estás seguro de que quieres eliminar "${recipeTitle}"? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              
+              // Eliminar relaciones receta-ingrediente primero
+              const { error: relationError } = await supabase
+                .from('recipe_ingredients')
+                .delete()
+                .eq('recipe_id', recipeId);
+
+              if (relationError) {
+                console.error('Error eliminando relaciones:', relationError);
+              }
+
+              // Eliminar la receta
+              const { error: recipeError } = await supabase
+                .from('recipes')
+                .delete()
+                .eq('id', recipeId);
+
+              if (recipeError) {
+                console.error('Error eliminando receta:', recipeError);
+                Alert.alert('Error', 'No se pudo eliminar la receta');
+                return;
+              }
+
+              // Recargar las recetas del usuario
+              await loadProfileData();
+              
+              Alert.alert('Éxito', 'La receta se eliminó correctamente');
+            } catch (error) {
+              console.error('Error inesperado:', error);
+              Alert.alert('Error', 'Ocurrió un error inesperado');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const logout = async () => {
@@ -221,31 +261,45 @@ export default function Profile({ navigation }: any) {
             <Text style={styles.emptyText}>No tienes recetas favoritas aún</Text>
           ) : (
             favorites.map((favorite) => (
-              <TouchableOpacity 
-                key={favorite.recipe_id} 
-                style={styles.recipeItem}
-                onPress={() => navigation.navigate('RecipeDetail', { recipeId: favorite.recipes.id })}
-              >
-                <Text style={styles.recipeTitle}>{favorite.recipes.title}</Text>
-                <Text style={styles.recipeDescription} numberOfLines={2}>
-                  {favorite.recipes.description}
-                </Text>
-              </TouchableOpacity>
+              <View key={favorite.recipe_id} style={styles.recipeItem}>
+                <TouchableOpacity 
+                  style={styles.recipeContent}
+                  onPress={() => navigation.navigate('RecipeDetail', { recipeId: favorite.recipes.id })}
+                >
+                  <Text style={styles.recipeTitle}>{favorite.recipes.title}</Text>
+                  <Text style={styles.recipeDescription} numberOfLines={2}>
+                    {favorite.recipes.description}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.removeButton}
+                  onPress={() => handleRemoveFavorite(favorite.recipes.id, favorite.recipes.title)}
+                >
+                  <Text style={styles.removeButtonText}>🗑️</Text>
+                </TouchableOpacity>
+              </View>
             ))
           )}
         </View>
 
-        {/* Recetas Subidas (solo Premium) */}
-        {profile?.plan === 'premium' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📝 Mis Recetas</Text>
-            {userRecipes.length === 0 ? (
+        {/* Recetas Subidas (todos los usuarios) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📝 Mis Recetas</Text>
+          {userRecipes.length === 0 ? (
+            <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No has subido recetas aún</Text>
-            ) : (
-              userRecipes.map((recipe) => (
+              <TouchableOpacity 
+                style={styles.createRecipeButton}
+                onPress={() => navigation.navigate('NuevaReceta')}
+              >
+                <Text style={styles.createRecipeButtonText}>✨ Crear mi primera receta</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            userRecipes.map((recipe) => (
+              <View key={recipe.id} style={styles.recipeItem}>
                 <TouchableOpacity 
-                  key={recipe.id} 
-                  style={styles.recipeItem}
+                  style={styles.recipeContent}
                   onPress={() => navigation.navigate('RecipeDetail', { recipeId: recipe.id })}
                 >
                   <Text style={styles.recipeTitle}>{recipe.title}</Text>
@@ -253,10 +307,16 @@ export default function Profile({ navigation }: any) {
                     {recipe.description}
                   </Text>
                 </TouchableOpacity>
-              ))
-            )}
-          </View>
-        )}
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeleteRecipe(recipe.id, recipe.title)}
+                >
+                  <Text style={styles.deleteButtonText}>🗑️</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+        </View>
 
         {/* Botón de cerrar sesión */}
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
@@ -398,7 +458,6 @@ const styles = StyleSheet.create({
   },
   recipeItem: {
     backgroundColor: 'white',
-    padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -406,6 +465,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recipeContent: {
+    flex: 1,
+    padding: 16,
   },
   recipeTitle: {
     fontSize: 16,
@@ -428,5 +493,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  removeButton: {
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeButtonText: {
+    fontSize: 20,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  createRecipeButton: {
+    backgroundColor: '#e48fb4',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginTop: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  createRecipeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  deleteButton: {
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    fontSize: 20,
   },
 });

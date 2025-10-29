@@ -9,7 +9,7 @@ interface AuthManagerContextType {
   isInitialized: boolean;
   signInWithEmail: (email: string, password: string) => Promise<{ error: any }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ error: any }>;
-  signInWithOtp: (email: string) => Promise<{ error: any }>;
+  signInWithOtp: (email: string, redirectTo?: string) => Promise<{ error: any }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
@@ -119,11 +119,14 @@ export function AuthManagerProvider({ children }: { children: React.ReactNode })
     }
   };
 
-  const signInWithOtp = async (email: string) => {
+  const signInWithOtp = async (email: string, redirectTo?: string) => {
     try {
       setLoading(true);
       const { error } = await supabase.auth.signInWithOtp({
         email,
+        options: {
+          emailRedirectTo: redirectTo,
+        }
       });
       return { error };
     } catch (error: any) {

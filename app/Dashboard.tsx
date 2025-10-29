@@ -142,23 +142,13 @@ const Dashboard = ({ navigation }: any) => {
 
         <TouchableOpacity 
           style={[styles.actionButton, styles.secondaryButton]}
-          onPress={() => navigation.navigate('Explore')}
+          onPress={() => navigation.navigate('NuevaReceta')}
         >
-          <Text style={styles.actionButtonEmoji}>🔍</Text>
-          <Text style={styles.actionButtonText}>Explorar</Text>
-          <Text style={styles.actionButtonSubtext}>Ver todas las recetas</Text>
+          <Text style={styles.actionButtonEmoji}>✨</Text>
+          <Text style={styles.actionButtonText}>Crear Receta</Text>
+          <Text style={styles.actionButtonSubtext}>Comparte tu creatividad</Text>
         </TouchableOpacity>
 
-        {isPremium && (
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.premiumButton]}
-            onPress={() => navigation.navigate('NuevaReceta')}
-          >
-            <Text style={styles.actionButtonEmoji}>✨</Text>
-            <Text style={styles.actionButtonText}>Crear Receta</Text>
-            <Text style={styles.actionButtonSubtext}>Comparte tu creatividad</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Características del plan */}
@@ -175,12 +165,12 @@ const Dashboard = ({ navigation }: any) => {
                 <Text style={styles.featureText}>1 receta aleatoria por día</Text>
               </View>
               <View style={styles.featureItem}>
-                <Text style={styles.featureEmoji}>🥬</Text>
-                <Text style={styles.featureText}>Máximo 3 ingredientes</Text>
+                <Text style={styles.featureEmoji}>✨</Text>
+                <Text style={styles.featureText}>Crear recetas básicas</Text>
               </View>
               <View style={styles.featureItem}>
-                <Text style={styles.featureEmoji}>👀</Text>
-                <Text style={styles.featureText}>Ver recetas públicas</Text>
+                <Text style={styles.featureEmoji}>🥬</Text>
+                <Text style={styles.featureText}>Máximo 3 ingredientes</Text>
               </View>
               <View style={styles.featureItem}>
                 <Text style={styles.featureEmoji}>❤️</Text>
@@ -199,7 +189,7 @@ const Dashboard = ({ navigation }: any) => {
               </View>
               <View style={styles.featureItem}>
                 <Text style={styles.featureEmoji}>✨</Text>
-                <Text style={styles.featureText}>Crear recetas</Text>
+                <Text style={styles.featureText}>Recetas avanzadas</Text>
               </View>
               <View style={styles.featureItem}>
                 <Text style={styles.featureEmoji}>💬</Text>

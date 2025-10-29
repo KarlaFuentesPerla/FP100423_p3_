@@ -12,6 +12,7 @@ interface Recipe {
   servings: number;
   difficulty: 'easy' | 'medium' | 'hard';
   image_url?: string;
+  created_at: string;
 }
 
 interface Favorite {
@@ -43,7 +44,8 @@ export const useFavorites = () => {
           recipes (
             id,
             title,
-            description
+            description,
+            created_at
           )
         `)
         .eq('user_id', user.id);

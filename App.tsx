@@ -8,13 +8,26 @@ import EmailVerification from './app/emailVerification';
 import NuevaReceta from './app/NuevaReceta';
 import Profile from './app/ProfileScreen';
 import RandomRecipeScreen from './app/RandomRecipeScreen';
+import RecipeDetailScreen from './app/RecipeDetailScreen';
 import UnifiedLoginScreen from './app/UnifiedLoginScreen';
+import AuthHandler from './components/AuthHandler';
 import { AuthManagerProvider, useAuthManager } from './components/AuthManager';
 
 const Stack = createNativeStackNavigator();
 
 function AppNavigator() {
   const { user, loading, isInitialized } = useAuthManager();
+
+  // Manejar deep links de autenticación
+  return (
+    <>
+      <AuthHandler />
+      <AppContent user={user} loading={loading} isInitialized={isInitialized} />
+    </>
+  );
+}
+
+function AppContent({ user, loading, isInitialized }: { user: any, loading: boolean, isInitialized: boolean }) {
 
   // Mostrar loading mientras se inicializa la autenticación
   if (!isInitialized) {
@@ -64,6 +77,13 @@ function AppNavigator() {
               component={RandomRecipeScreen}
               options={{ 
                 title: 'Receta del Día'
+              }}
+            />
+            <Stack.Screen 
+              name="RecipeDetail" 
+              component={RecipeDetailScreen}
+              options={{ 
+                title: 'Detalles de la Receta'
               }}
             />
             <Stack.Screen 

@@ -10,10 +10,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useAuthManager } from '../components/AuthManager';
 import { supabase } from '../lib/supabase';
 
 export default function EmailVerificationScreen({ route, navigation }: any) {
   const { email } = route.params;
+  const { user, refreshSession } = useAuthManager();
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
@@ -33,14 +35,30 @@ export default function EmailVerificationScreen({ route, navigation }: any) {
     return () => clearInterval(timer);
   }, []);
 
-  // Solo escuchar cambios en el estado de autenticación, no verificar automáticamente
+  // Verificar si el usuario ya está autenticado
   useEffect(() => {
-    // Escuchar cambios en el estado de autenticación
+    if (user && user.email_confirmed_at) {
+      setIsVerified(true);
+      Alert.alert(
+        '¡Email verificado! 🎉',
+        'Tu cuenta ya está verificada y activa',
+        [
+          {
+            text: 'Continuar',
+            onPress: () => navigation.navigate('Dashboard')
+          }
+        ]
+      );
+    }
+  }, [user, navigation]);
+
+  // Escuchar cambios en el estado de autenticación
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email_confirmed_at);
         
-        // Solo verificar si el usuario se acaba de registrar y confirmar
+        // Verificar si el usuario se acaba de registrar y confirmar
         if (event === 'SIGNED_IN' && session?.user?.email_confirmed_at) {
           setIsVerified(true);
           Alert.alert(
@@ -49,7 +67,22 @@ export default function EmailVerificationScreen({ route, navigation }: any) {
             [
               {
                 text: 'Continuar',
-                onPress: () => navigation.navigate('Inicio')
+                onPress: () => navigation.navigate('Dashboard')
+              }
+            ]
+          );
+        }
+        
+        // También verificar si el usuario ya estaba autenticado
+        if (event === 'INITIAL_SESSION' && session?.user?.email_confirmed_at) {
+          setIsVerified(true);
+          Alert.alert(
+            '¡Email verificado! 🎉',
+            'Tu cuenta ya está verificada y activa',
+            [
+              {
+                text: 'Continuar',
+                onPress: () => navigation.navigate('Dashboard')
               }
             ]
           );
@@ -60,7 +93,7 @@ export default function EmailVerificationScreen({ route, navigation }: any) {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigation]);
 
   const handleResend = async () => {
     setResendLoading(true);
@@ -137,37 +170,70 @@ export default function EmailVerificationScreen({ route, navigation }: any) {
           onPress={async () => {
             setLoading(true);
             try {
-              // Forzar una actualización de la sesión
-              const { data: { session }, error } = await supabase.auth.getSession();
-              
-              if (error) {
-                Alert.alert('Error', 'Error al verificar el estado de la sesión');
-                return;
-              }
-
-              if (session?.user?.email_confirmed_at) {
+              // Primero verificar si ya hay un usuario autenticado
+              if (user && user.email_confirmed_at) {
+                setIsVerified(true);
                 Alert.alert(
                   '¡Email verificado! 🎉',
-                  'Tu cuenta ha sido verificada correctamente',
+                  'Tu cuenta ya está verificada y activa',
                   [
                     {
                       text: 'Continuar',
-                      onPress: () => navigation.navigate('Inicio')
+                      onPress: () => navigation.navigate('Dashboard')
                     }
                   ]
                 );
-              } else {
-                Alert.alert(
-                  'Email no verificado',
-                  'Por favor:\n\n1. Revisa tu correo (incluyendo spam)\n2. Haz clic en el enlace de confirmación\n3. Regresa a la app y presiona este botón nuevamente\n\nSi el enlace no funciona, presiona "Reenviar enlace"',
-                  [
-                    { text: 'Entendido', style: 'default' }
-                  ]
-                );
+                return;
               }
+
+              // Si no hay usuario, intentar refrescar la sesión
+              await refreshSession();
+              
+              // Esperar un momento para que se actualice el estado
+              setTimeout(async () => {
+                try {
+                  const { data: { session }, error } = await supabase.auth.getSession();
+                  
+                  if (error) {
+                    console.error('Error getting session:', error);
+                    Alert.alert('Error', 'Error al verificar el estado de la sesión');
+                    return;
+                  }
+
+                  console.log('Session data after refresh:', session?.user?.email_confirmed_at);
+
+                  if (session?.user?.email_confirmed_at) {
+                    setIsVerified(true);
+                    Alert.alert(
+                      '¡Email verificado! 🎉',
+                      'Tu cuenta ha sido verificada correctamente',
+                      [
+                        {
+                          text: 'Continuar',
+                          onPress: () => navigation.navigate('Dashboard')
+                        }
+                      ]
+                    );
+                  } else {
+                    Alert.alert(
+                      'Email no verificado',
+                      'Por favor:\n\n1. Revisa tu correo (incluyendo spam)\n2. Haz clic en el enlace de confirmación\n3. Regresa a la app y presiona este botón nuevamente\n\nSi el enlace no funciona, presiona "Reenviar enlace"',
+                      [
+                        { text: 'Entendido', style: 'default' }
+                      ]
+                    );
+                  }
+                } catch (error) {
+                  console.error('Error verifying email:', error);
+                  Alert.alert('Error', 'Error al verificar el email');
+                } finally {
+                  setLoading(false);
+                }
+              }, 1000);
+              
             } catch (error) {
+              console.error('Error in verify process:', error);
               Alert.alert('Error', 'Error al verificar el email');
-            } finally {
               setLoading(false);
             }
           }}

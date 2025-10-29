@@ -1,5 +1,4 @@
 import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
@@ -14,6 +13,7 @@ import {
     View
 } from 'react-native';
 import { useAuthManager } from '../components/AuthManager';
+import { supabase } from '../lib/supabase';
 
 export default function UnifiedLoginScreen({ navigation }: any) {
   const { signInWithEmail, signInWithOtp, loading: authLoading } = useAuthManager();
@@ -33,7 +33,7 @@ export default function UnifiedLoginScreen({ navigation }: any) {
       if (isRegister) {
         // Registro con OTP
         const redirectTo = Linking.createURL('/auth/callback');
-        const { error } = await signInWithOtp(email);
+        const { error } = await signInWithOtp(email, redirectTo);
 
         if (error) {
           Alert.alert('Error', error.message);
@@ -72,70 +72,6 @@ export default function UnifiedLoginScreen({ navigation }: any) {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const redirectTo = Linking.createURL('/auth/callback');
-      console.log('Google OAuth redirectTo:', redirectTo);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        }
-      });
-
-      if (error) {
-        console.error('Google OAuth error:', error);
-        Alert.alert('Error', error.message);
-        return;
-      }
-
-      if (data.url) {
-        console.log('Opening Google OAuth URL:', data.url);
-        
-        // Abrir el navegador para autenticación
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          redirectTo,
-          {
-            showInRecents: true,
-          }
-        );
-
-        console.log('Google OAuth result:', result);
-
-        if (result.type === 'success') {
-          // La autenticación fue exitosa
-          console.log('Google OAuth success, checking session...');
-          
-          // Verificar la sesión después de un breve delay
-          setTimeout(async () => {
-            const { data: sessionData } = await supabase.auth.getSession();
-            if (sessionData.session) {
-              Alert.alert('¡Éxito!', 'Has iniciado sesión con Google');
-              navigation.navigate('Dashboard');
-            } else {
-              Alert.alert('Error', 'No se pudo establecer la sesión');
-            }
-          }, 1000);
-        } else if (result.type === 'cancel') {
-          console.log('Google OAuth cancelled by user');
-        } else {
-          console.log('Google OAuth failed:', result);
-          Alert.alert('Error', 'No se pudo completar la autenticación con Google');
-        }
-      } else {
-        Alert.alert('Error', 'No se pudo obtener la URL de autenticación');
-      }
-    } catch (error: any) {
-      console.error('Google OAuth exception:', error);
-      Alert.alert('Error', error.message || 'Ocurrió un error inesperado');
-    }
-  };
 
   const handleForgotPassword = async () => {
     if (!email) {
@@ -215,18 +151,6 @@ export default function UnifiedLoginScreen({ navigation }: any) {
             )}
           </TouchableOpacity>
 
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>o</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={handleGoogleSignIn}
-          >
-            <Text style={styles.googleButtonText}>🔍 Continuar con Google</Text>
-          </TouchableOpacity>
 
           <View style={styles.toggleContainer}>
             <Text style={styles.toggleText}>
@@ -316,34 +240,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#e48fb4',
     fontWeight: 'bold',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e0e0e0',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#999',
-    fontSize: 16,
-  },
-  googleButton: {
-    backgroundColor: 'white',
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-  },
-  googleButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
   },
 });

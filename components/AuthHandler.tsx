@@ -1,48 +1,40 @@
-import { useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useAuthManager } from './AuthManager';
 
 export default function AuthHandler() {
-  const router = useRouter();
+  const { refreshSession } = useAuthManager();
 
   useEffect(() => {
-    // Manejar deep links de autenticación
-    const handleAuthCallback = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
+    // Manejar deep links cuando la app se abre desde un enlace
+    const handleDeepLink = (url: string) => {
+      console.log('Deep link recibido:', url);
+      
+      // Verificar si es un enlace de autenticación de Supabase
+      if (url.includes('#access_token=') || url.includes('#error=')) {
+        console.log('Procesando enlace de autenticación...');
         
-        if (error) {
-          console.error('Error getting session:', error);
-          return;
-        }
-
-        if (data.session) {
-          // Usuario autenticado, navegar al inicio
-          router.replace('/Inicio');
-        }
-      } catch (error) {
-        console.error('Error handling auth callback:', error);
+        // Forzar actualización de la sesión
+        refreshSession();
       }
     };
 
-    // Verificar si hay una sesión activa al cargar
-    handleAuthCallback();
+    // Escuchar enlaces cuando la app está abierta
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handleDeepLink(url);
+    });
 
-    // Escuchar cambios en el estado de autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          router.replace('/Inicio');
-        } else if (event === 'SIGNED_OUT') {
-          router.replace('/Login');
-        }
+    // Manejar enlaces cuando la app se abre desde un estado cerrado
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
       }
-    );
+    });
 
     return () => {
-      subscription.unsubscribe();
+      subscription?.remove();
     };
-  }, [router]);
+  }, [refreshSession]);
 
-  return null;
+  return null; // Este componente no renderiza nada
 }
