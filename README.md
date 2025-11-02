@@ -2,6 +2,7 @@ LINKS PARA LOS VIDEOS:
 FUNCIÓN DE LA APP: https://youtu.be/8p3AUlgjLfM
 ¿CÓMO SE HIZO?: https://youtu.be/pLXW2eqx8pg
 
+DENTRO DEL REPOSITORIO SE ENCUENTRAN ARCHIVOS CON NOMBRE: Capex y opex, documentación y diagrama. Esa es la documentación.
 
 # 🥗 Recetas Vegetarianas
 
