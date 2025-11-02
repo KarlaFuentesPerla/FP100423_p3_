@@ -1,3 +1,8 @@
+LINKS PARA LOS VIDEOS:
+FUNCIÓN DE LA APP: https://youtu.be/8p3AUlgjLfM
+¿CÓMO SE HIZO?: https://youtu.be/pLXW2eqx8pg
+
+
 # 🥗 Recetas Vegetarianas
 
 Una aplicación móvil desarrollada con React Native y Expo para descubrir, crear y compartir recetas vegetarianas deliciosas.
